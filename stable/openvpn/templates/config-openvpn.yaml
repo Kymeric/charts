@@ -10,6 +10,7 @@ metadata:
 data:
   setup-certs.sh: |-
     #!/bin/bash
+    set -eu
     EASY_RSA_LOC="/etc/openvpn/certs"
     cd $EASY_RSA_LOC
     SERVER_CERT="${EASY_RSA_LOC}/pki/issued/server.crt"
@@ -20,7 +21,7 @@ data:
       if [ ! -e ${EASY_RSA_LOC}/crl.pem ]
       then
         echo "generating missed crl file"
-        ./easyrsa gen-crl
+        easyrsa gen-crl
         cp ${EASY_RSA_LOC}/pki/crl.pem ${EASY_RSA_LOC}/crl.pem
         chmod 644 ${EASY_RSA_LOC}/crl.pem
       fi
@@ -33,36 +34,29 @@ data:
         fi
       {{- end }}
     else
-      cp -R /usr/share/easy-rsa/* $EASY_RSA_LOC
-      ./easyrsa init-pki
-      echo "ca\n" | ./easyrsa build-ca nopass
-      ./easyrsa build-server-full server nopass
-      ./easyrsa gen-dh
-      {{- if .Values.openvpn.useCrl }}
-      ./easyrsa gen-crl
-      cp ${EASY_RSA_LOC}/pki/crl.pem ${EASY_RSA_LOC}/crl.pem # Note: the pki/ directory is inaccessible after openvpn drops privileges, so we cp crl.pem to ${EASY_RSA_LOC} to allow CRL updates without a restart
-      chmod 644 ${EASY_RSA_LOC}/crl.pem
-      {{- end }}
-      {{- if .Values.openvpn.taKey }}
-      openvpn --genkey --secret ${EASY_RSA_LOC}/pki/ta.key
-      {{- end }}
+      export EASYRSA_PKI=$EASY_RSA_LOC/pki
+      ovpn_genconfig -u server
+      echo "ca\n" | ovpn_initpki nopass
     fi
-
 
   newClientCert.sh: |-
       #!/bin/bash
       EASY_RSA_LOC="/etc/openvpn/certs"
+      CLIENT_NAME=$1
+      REMOTE_ADDR=$2
+
       cd $EASY_RSA_LOC
-      MY_IP_ADDR="$2"
-      ./easyrsa build-client-full $1 nopass
+      export EASYRSA_PKI=$EASY_RSA_LOC/pki
+      easyrsa build-client-full $CLIENT_NAME nopass
+
       cat >${EASY_RSA_LOC}/pki/$1.ovpn <<EOF
       client
       nobind
       dev tun
 {{- if eq .Values.service.type "NodePort" }}
-      remote ${MY_IP_ADDR} {{ .Values.service.nodePort }} {{ .Values.openvpn.OVPN_PROTO }}
+      remote ${REMOTE_ADDR} {{ .Values.service.nodePort }} {{ .Values.openvpn.OVPN_PROTO }}
 {{- else }}
-      remote ${MY_IP_ADDR} {{ .Values.service.externalPort }} {{ .Values.openvpn.OVPN_PROTO }}
+      remote ${REMOTE_ADDR} {{ .Values.service.externalPort }} {{ .Values.openvpn.OVPN_PROTO }}
 {{- end }}
       {{- if .Values.openvpn.cipher }}
       cipher {{ .Values.openvpn.cipher }}
@@ -91,14 +85,16 @@ data:
       key-direction 1
       {{- end }}
       EOF
-      cat pki/$1.ovpn
 
   revokeClientCert.sh: |-
       #!/bin/bash
+      set -e
+
       EASY_RSA_LOC="/etc/openvpn/certs"
       cd $EASY_RSA_LOC
-      ./easyrsa revoke $1 
-      ./easyrsa gen-crl
+      export EASYRSA_PKI=$EASY_RSA_LOC/pki
+      easyrsa revoke $1
+      easyrsa gen-crl
       cp ${EASY_RSA_LOC}/pki/crl.pem ${EASY_RSA_LOC}
       chmod 644 ${EASY_RSA_LOC}/crl.pem
 
@@ -147,12 +143,6 @@ data:
           mknod /dev/net/tun c 10 200
       fi
 
-      if [ "$DEBUG" == "1" ]; then
-          echo ========== ${OVPN_CONFIG} ==========
-          cat "${OVPN_CONFIG}"
-          echo ====================================
-      fi
-
       intAndIP="$(ip route get 8.8.8.8 | awk '/8.8.8.8/ {print $5 "-" $7}')"
       int="${intAndIP%-*}"
       ip="${intAndIP#*-}"
@@ -160,6 +150,7 @@ data:
 
       NETWORK="$(cidr2net $cidr)"
       NETMASK="$(cidr2mask ${cidr#*/})"
+
       DNS=$(cat /etc/resolv.conf | grep -v '^#' | grep nameserver | awk '{print $2}')
       SEARCH=$(cat /etc/resolv.conf | grep -v '^#' | grep search | awk '{$1=""; print $0}')
       FORMATTED_SEARCH=""
@@ -172,8 +163,15 @@ data:
       sed 's|NETWORK|'"${NETWORK}"'|' -i /etc/openvpn/openvpn.conf
       sed 's|NETMASK|'"${NETMASK}"'|' -i /etc/openvpn/openvpn.conf
 
-      # exec openvpn process so it receives lifecycle signals
-      exec openvpn --config /etc/openvpn/openvpn.conf
+      if [ "{{ .Values.debug }}" == "true" ]; then
+          echo ">>> DEBUG: printing openvpn.conf below"
+          echo ========== /etc/openvpn/openvpn.conf ==========
+          cat /etc/openvpn/openvpn.conf
+          echo ===============================================
+      fi
+
+      openvpn --config /etc/openvpn/openvpn.conf
+
   openvpn.conf: |-
       server {{ .Values.openvpn.OVPN_NETWORK }} {{ .Values.openvpn.OVPN_SUBNET }}
       verb 3
