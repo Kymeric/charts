@@ -9,6 +9,12 @@ updateStrategy: {}
   #   maxSurge: 1
   #   maxUnavailable: 0
 
+#Init Container Image
+init:
+  image:
+    repository: busybox
+    tag: 1.31
+
 image:
   repository: jfelten/openvpn-docker
   tag: 1.1.0
