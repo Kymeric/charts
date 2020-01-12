@@ -16,7 +16,8 @@ Bitnami charts can be used with [Kubeapps](https://kubeapps.com/) for deployment
 
 ## Prerequisites
 
-- Kubernetes 1.8+ with Beta APIs enabled
+- Kubernetes 1.12+
+- Helm 2.11+ or Helm 3.0-beta3+
 
 ## Installing the Chart
 
@@ -26,7 +27,7 @@ To install the chart with the release name `my-release`:
 $ helm install --name my-release stable/external-dns
 ```
 
-The command deploys ExternalDNS on the Kubernetes cluster in the default configuration. The [configuration](#configuration) section lists the parameters that can be configured during installation.
+The command deploys ExternalDNS on the Kubernetes cluster in the default configuration. The [Parameters](#parameters) section lists the parameters that can be configured during installation.
 
 > **Tip**: List all releases using `helm list`
 
@@ -40,7 +41,7 @@ $ helm delete my-release
 
 The command removes all the Kubernetes components associated with the chart and deletes the release.
 
-## Configuration
+## Parameters
 
 The following table lists the configurable parameters of the external-dns chart and their default values.
 
@@ -58,7 +59,13 @@ The following table lists the configurable parameters of the external-dns chart 
 | `fullnameOverride`                  | String to fully override external-dns.fullname template with a string                                    | `nil`                                                       |
 | `sources`                           | K8s resources type to be observed for new DNS entries by ExternalDNS                                     | `[service, ingress]`                                        |
 | `provider`                          | DNS provider where the DNS records will be created (mandatory) (options: aws, azure, google, ...)        | `aws`                                                       |
+| `namespace`                         | Limit sources of endpoints to a specific namespace (default: all namespaces)                             | `""`                                                        |
+| `fqdnTemplates`                     | Templated strings that are used to generate DNS names from sources that don't define a hostname themselves   | `[]`                                                    |
+| `combineFQDNAnnotation`             | Combine FQDN template and annotations instead of overwriting                                             | `false`                                                     |
+| `ignoreHostnameAnnotation`          | Ignore hostname annotation when generating DNS names, valid only when fqdn-template is set               | `false`                                                     |
 | `publishInternalServices`           | Whether to publish DNS records for ClusterIP services or not                                             | `false`                                                     |
+| `publishHostIP`                     | Allow external-dns to publish host-ip for headless services                                              | `false`                                                     |
+| `serviceTypeFilter`                 | The service types to take care about (default: all, options: ClusterIP, NodePort, LoadBalancer, ExternalName)   | `[]`                                                 |
 | `aws.credentials.accessKey`         | When using the AWS provider, set `aws_access_key_id` in the AWS credentials (optional)                   | `""`                                                        |
 | `aws.credentials.secretKey`         | When using the AWS provider, set `aws_secret_access_key` in the AWS credentials (optional)               | `""`                                                        |
 | `aws.credentials.mountPath`         | When using the AWS provider, determine `mountPath` for `credentials` secret                              | `"/.aws"`                                                   |
@@ -69,6 +76,7 @@ The following table lists the configurable parameters of the external-dns chart 
 | `aws.zoneTags`                      | When using the AWS provider, filter for zones with these tags                                            | `[]`                                                        |
 | `aws.preferCNAME`                   | When using the AWS provider, replaces Alias recors with CNAME (options: true, false)                     | `[]`                                                        |
 | `azure.secretName`                  | When using the Azure provider, set the secret containing the `azure.json` file                           | `""`                                                        |
+| `azure.cloud`                       | When using the Azure provider, set the Azure Clound                                                      | `""`                                                        |
 | `azure.resourceGroup`               | When using the Azure provider, set the Azure Resource Group                                              | `""`                                                        |
 | `azure.tenantId`                    | When using the Azure provider, set the Azure Tenant ID                                                   | `""`                                                        |
 | `azure.subscriptionId`              | When using the Azure provider, set the Azure Subscription ID                                             | `""`                                                        |
@@ -121,6 +129,7 @@ The following table lists the configurable parameters of the external-dns chart 
 | `crd.kind`                          | Sets the kind for the CRD to watch                                                                       | `""`                                                        |
 | `dryRun`                            | When enabled, prints DNS record changes rather than actually performing them (optional)                  | `false`                                                     |
 | `logLevel`                          | Verbosity of the logs (options: panic, debug, info, warn, error, fatal)                                  | `info`                                                      |
+| `logFormat`                         | Which format to output logs in (options: text, json)                                                     | `text`                                                      |
 | `interval`                          | Interval update period to use                                                                            | `1m`                                                        |
 | `istioIngressGateways`              | The fully-qualified name of the Istio ingress gateway services .                                         | `""`                                                        |
 | `policy`                            | Modify how DNS records are sychronized between sources and providers (options: sync, upsert-only )       | `upsert-only`                                               |
@@ -147,7 +156,7 @@ The following table lists the configurable parameters of the external-dns chart 
 | `service.loadBalancerIP`            | IP address to assign to load balancer (if supported)                                                     | `""`                                                        |
 | `service.loadBalancerSourceRanges`  | List of IP CIDRs allowed access to load balancer (if supported)                                          | `[]`                                                        |
 | `service.annotations`               | Annotations to add to service                                                                            | `{}`                                                        |
-| `rbac.create`                       | Weather to create & use RBAC resources or not                                                            | `false`                                                     |
+| `rbac.create`                       | Weather to create & use RBAC resources or not                                                            | `true`                                                      |
 | `rbac.serviceAccountName`           | ServiceAccount (ignored if rbac.create == true)                                                          | `default`                                                   |
 | `rbac.serviceAccountAnnotations`    | Additional Service Account annotations                                                                   | `{}`                                                        |
 | `rbac.apiVersion`                   | Version of the RBAC API                                                                                  | `v1beta1`                                                   |
@@ -156,7 +165,11 @@ The following table lists the configurable parameters of the external-dns chart 
 | `livenessProbe`                     | Deployment Liveness Probe                                                                                | See `values.yaml`                                           |
 | `readinessProbe`                    | Deployment Readiness Probe                                                                               | See `values.yaml`                                           |
 | `metrics.enabled`                   | Enable prometheus to access external-dns metrics endpoint                                                | `false`                                                     |
-| `metrics.podAnnotations`            | Annotations for enabling prometheus to access the metrics endpoint                                       | {`prometheus.io/scrape: "true",prometheus.io/port: "7979"`} |
+| `metrics.podAnnotations`            | Annotations for enabling prometheus to access the metrics endpoint                                       |                                                             |
+| `metrics.serviceMonitor.enabled`    | Create ServiceMonitor object                                                                             | `false`                                                     |
+| `metrics.serviceMonitor.selector`   | Additional labels for ServiceMonitor object                                                              | `{}`                                                        |
+| `metrics.serviceMonitor.interval`   | Interval at which metrics should be scraped                                                              | `30s`                                                       |
+| `metrics.serviceMonitor.scrapeTimeout`   | Timeout after which the scrape is ended                                                             | `30s`                                                       |
 
 Specify each parameter using the `--set key=value[,key=value]` argument to `helm install`. For example,
 
@@ -173,13 +186,17 @@ $ helm install --name my-release -f values.yaml stable/external-dns
 
 > **Tip**: You can use the default [values.yaml](values.yaml)
 
+## Configuration and installation details
+
+### [Rolling VS Immutable tags](https://docs.bitnami.com/containers/how-to/understand-rolling-tags-containers/)
+
+It is strongly recommended to use immutable tags in a production environment. This ensures your deployment does not change automatically if the same tag is updated with a different image.
+
+Bitnami will release a new chart updating its containers if a new version of the main container, significant changes, or critical vulnerabilities exist.
+
 ### Production configuration
 
-This chart includes a `values-production.yaml` file where you can find some parameters oriented to production configuration in comparison to the regular `values.yaml`.
-
-```console
-$ helm install --name my-release -f ./values-production.yaml stable/external-dns
-```
+This chart includes a `values-production.yaml` file where you can find some parameters oriented to production configuration in comparison to the regular `values.yaml`. You can use this file instead of the default one.
 
 - Desired number of ExternalDNS replicas:
 ```diff
@@ -215,12 +232,6 @@ $ helm install --name my-release \
   --set domainFilters[0]=HOSTED_ZONE_NAME \
   stable/external-dns
 ```
-
-### [Rolling VS Immutable tags](https://docs.bitnami.com/containers/how-to/understand-rolling-tags-containers/)
-
-It is strongly recommended to use immutable tags in a production environment. This ensures your deployment does not change automatically if the same tag is updated with a different image.
-
-Bitnami will release a new chart updating its containers if a new version of the main container, significant changes, or critical vulnerabilities exist.
 
 ## Upgrading
 

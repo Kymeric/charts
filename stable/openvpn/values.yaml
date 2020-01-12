@@ -33,6 +33,9 @@ service:
 #   backup.ark.heptio.com/backup-volumes: certs
 podAnnotations: {}
 
+# Add privileged init container to enable IPv4 forwarding
+ipForwardInitContainer: false
+
 resources:
   limits:
     cpu: 300m
@@ -40,6 +43,12 @@ resources:
   requests:
     cpu: 300m
     memory: 128Mi
+
+readinessProbe:
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  successThreshold: 2
+
 persistence:
   enabled: true
   # subPath: openvpn
@@ -116,5 +125,6 @@ openvpn:
   # - -A FORWARD -j REJECT
 
 
-nodeSelector: {}
 debug: false
+nodeSelector: {}
+tolerations: []

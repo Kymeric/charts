@@ -45,16 +45,9 @@ The following table lists the configurable parameters of the Blackbox-Exporter c
 | -------------------------------------- | ------------------------------------------------- | ----------------------------- |
 | `config`                               | Prometheus blackbox configuration                 | {}                            |
 | `secretConfig`                         | Whether to treat blackbox configuration as secret | `false`                       |
-| `configmapReload.name`                 | configmap-reload container name                   | `configmap-reload`            |
-| `configmapReload.runAsUser`            | User to run configmap-reload container as         | `65534`                       |
-| `configmapReload.runAsNonRoot`         | Run configmap-reload container as non-root        | `true`                        |
-| `configmapReload.image.repository`     | configmap-reload container image repository       | `jimmidyson/configmap-reload` |
-| `configmapReload.image.tag`            | configmap-reload container image tag              | `v0.2.2`                      |
-| `configmapReload.image.pullPolicy`     | configmap-reload container image pull policy      | `IfNotPresent`                |
-| `configmapReload.extraArgs`            | Additional configmap-reload container arguments   | `{}`                          |
-| `configmapReload.extraConfigmapMounts` | Additional configmap-reload configMap mounts      | `[]`                          |
-| `configmapReload.resources`            | configmap-reload pod resource requests & limits   | `{}`                          |
 | `extraArgs`                            | Optional flags for blackbox                       | `[]`                          |
+| `extraConfigmapMounts`                 | Additional configmap mounts                       | `[]`                          |
+| `extraSecretMounts`                    | Additional secret mounts                          | `[]`                          |
 | `image.repository`                     | container image repository                        | `prom/blackbox-exporter`      |
 | `image.tag`                            | container image tag                               | `v0.15.1`                     |
 | `image.pullPolicy`                     | container image pull policy                       | `IfNotPresent`                |
@@ -70,7 +63,7 @@ The following table lists the configurable parameters of the Blackbox-Exporter c
 | `tolerations`                          | node tolerations for pod assignment               | `[]`                          |
 | `affinity`                             | node affinity for pod assignment                  | `{}`                          |
 | `podAnnotations`                       | annotations to add to each pod                    | `{}`                          |
-| `podDisruptionBudget`                  | pod disruption budget                             | `{maxUnavailable: 0}`         |
+| `podDisruptionBudget`                  | pod disruption budget                             | `{}`         |
 | `priorityClassName`                    | priority class name                               | None                          |
 | `resources`                            | pod resource requests & limits                    | `{}`                          |
 | `restartPolicy`                        | container restart policy                          | `Always`                      |
@@ -105,6 +98,16 @@ $ helm install --name my-release -f values.yaml stable/prometheus-blackbox-expor
 > **Tip**: You can use the default [values.yaml](values.yaml)
 
 ## Upgrading an existing Release to a new major version
+
+### 2.0.0
+
+This version removes the `podDisruptionBudget.enabled` parameter and changes the default value of `podDisruptionBudget` to `{}`, in order to fix Helm 3 compatibility.
+
+In order to upgrade, please remove `podDisruptionBudget.enabled` from your custom values.yaml file and set the content of `podDisruptionBudget`, for example:
+```yaml
+podDisruptionBudget:
+  maxUnavailable: 0
+```
 
 ### 1.0.0
 
