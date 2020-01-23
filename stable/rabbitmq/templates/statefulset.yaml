@@ -81,22 +81,22 @@ spec:
          - bash
          - -ec
          - |
-            mkdir -p /opt/bitnami/rabbitmq/.rabbitmq/
-            mkdir -p /opt/bitnami/rabbitmq/etc/rabbitmq/
-            touch /opt/bitnami/rabbitmq/var/lib/rabbitmq/.start
+{{ print "mkdir -p " .Values.persistence.path "/.rabbitmq/" | indent 12 }}
+{{ print "mkdir -p " .Values.paths.etc.rabbitmq | indent 12 }}
+{{ print "touch " .Values.persistence.path "/.start" | indent 12}}
             #persist the erlang cookie in both places for server and cli tools
-            echo $RABBITMQ_ERL_COOKIE > /opt/bitnami/rabbitmq/var/lib/rabbitmq/.erlang.cookie
-            cp /opt/bitnami/rabbitmq/var/lib/rabbitmq/.erlang.cookie /opt/bitnami/rabbitmq/.rabbitmq/
+{{ print "echo $RABBITMQ_ERL_COOKIE > " .Values.persistence.path "/.erlang.cookie" | indent 12 }}            
+{{ print "cp " .Values.paths.var.lib.rabbitmq "/.erlang.cookie " .Values.persistence.path "/.rabbitmq/" | indent 12 }}
             #change permission so only the user has access to the cookie file
-            chmod 600 /opt/bitnami/rabbitmq/.rabbitmq/.erlang.cookie /opt/bitnami/rabbitmq/var/lib/rabbitmq/.erlang.cookie
+{{ print "chmod 600 " .Values.persistence.path "/.erlang.cookie " .Values.paths.var.lib.rabbitmq "/.erlang.cookie" | indent 12 }}
             #copy the mounted configuration to both places
-            cp  /opt/bitnami/rabbitmq/conf/* /opt/bitnami/rabbitmq/etc/rabbitmq
+{{ print "cp /opt/bitnami/rabbitmq/conf/* " .Values.paths.etc.rabbitmq | indent 12 }}
             # Apply resources limits
             {{- if .Values.rabbitmq.setUlimitNofiles }}
             ulimit -n "${RABBITMQ_ULIMIT_NOFILES}"
             {{- end }}
             #replace the default password that is generated
-            sed -i "/CHANGEME/cdefault_pass=${RABBITMQ_PASSWORD//\\/\\\\}" /opt/bitnami/rabbitmq/etc/rabbitmq/rabbitmq.conf
+{{ print "sed -i '/CHANGEME/cdefault_pass=${RABBITMQ_PASSWORD//\\/\\\\}' " .Values.paths.etc.rabbitmq "/rabbitmq.conf" | indent 12 }}
             {{- if and .Values.persistence.enabled .Values.forceBoot.enabled }}
             if [ -d "{{ .Values.persistence.path }}/mnesia/${RABBITMQ_NODENAME}" ]; then rabbitmqctl force_boot; fi
             {{- end }}
@@ -116,7 +116,7 @@ spec:
             subPath: rabbitmq-health-check
           {{- if .Values.rabbitmq.tls.enabled }}
           - name: {{ template "rabbitmq.fullname" . }}-certs
-            mountPath: /opt/bitnami/rabbitmq/certs
+            mountPath: {{ print .Values.paths.rabbitmq "/certs" }}
           {{- end }}
           - name: data
             mountPath: "{{ .Values.persistence.path }}"

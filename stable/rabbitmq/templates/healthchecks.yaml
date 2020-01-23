@@ -10,7 +10,7 @@ metadata:
 data:
   rabbitmq-health-check: |-
     #!/bin/sh
-    START_FLAG=/opt/bitnami/rabbitmq/var/lib/rabbitmq/.start
+{{ print "START_FLAG=" .Values.paths.var.lib.rabbitmq "/.start" | indent 4 }}
     if [ -f ${START_FLAG} ]; then
         rabbitmqctl node_health_check
         RESULT=$?

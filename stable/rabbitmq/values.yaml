@@ -275,6 +275,15 @@ persistence:
 ##
 resources: {}
 
+paths:
+  rabbitmq: /opt/bitnami/rabbitmq
+  etc:
+    rabbitmq: /test
+    #rabbitmq: /opt/bitnami/rabbitmq/etc/rabbitmq
+  var:
+    lib:
+      rabbitmq: /opt/bitnami/rabbitmq/var/lib/rabbitmq
+
 networkPolicy:
   ## Enable creation of NetworkPolicy resources. Only Ingress traffic is filtered for now.
   ## ref: https://kubernetes.io/docs/concepts/services-networking/network-policies/
